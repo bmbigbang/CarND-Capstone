@@ -20,7 +20,7 @@ class TLClassifier(object):
         #TODO implement light color prediction
         self.c += 1
         pyplot.savefig('/home/student/classifier_images/image-{}'.format(self.c), dpi=None, facecolor='w', edgecolor='w',
-                orientation='portrait', papertype=None, format=None,
+                orientation='landscape', papertype=None, format=None,
                 transparent=False, bbox_inches=None, pad_inches=0.1,
                 frameon=None)
         return TrafficLight.GREEN
