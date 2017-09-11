@@ -10,8 +10,11 @@ from light_classification.tl_classifier import TLClassifier
 import tf
 import cv2
 import yaml
+import tl_helper
+import numpy as np
 
 STATE_COUNT_THRESHOLD = 3
+LOOKAHEAD_WPS = 20
 
 class TLDetector(object):
     def __init__(self):
@@ -55,7 +58,7 @@ class TLDetector(object):
         self.pose = msg
 
     def waypoints_cb(self, waypoints):
-        self.waypoints = waypoints
+        self.waypoints = waypoints.waypoints
 
     def traffic_cb(self, msg):
         self.lights = msg.lights
@@ -90,7 +93,7 @@ class TLDetector(object):
             self.upcoming_red_light_pub.publish(Int32(self.last_wp))
         self.state_count += 1
 
-    def get_closest_waypoint(self, pose):
+    def get_closest_waypoint(self, pose, waypoints):
         """Identifies the closest path waypoint to the given position
             https://en.wikipedia.org/wiki/Closest_pair_of_points_problem
         Args:
@@ -100,8 +103,25 @@ class TLDetector(object):
             int: index of the closest waypoint in self.waypoints
 
         """
-        #TODO implement
-        return 0
+        best_gap = float('inf')
+        best_index = 0
+        car_position = pose.position
+
+        if waypoints:
+            for i, waypoint in enumerate(waypoints):
+
+                waypoint_position = waypoint.pose.pose.position
+                dx = car_position.x - waypoint_position.x
+                dy = car_position.y - waypoint_position.y
+                gap = dx * dx + dy * dy
+
+                if gap < best_gap:
+                    best_index, best_gap = i, gap
+
+            is_behind = tl_helper.is_waypoint_behind(pose, waypoints[best_index])
+            if is_behind:
+                best_index += 1
+        return best_index
 
 
     def project_to_image_plane(self, point_in_world):
@@ -175,8 +195,21 @@ class TLDetector(object):
         """
         light = None
         light_positions = self.config['light_positions']
-        if(self.pose):
-            car_position = self.get_closest_waypoint(self.pose.pose)
+        if self.pose:
+            car_position = self.pose.pose
+            closest = tl_helper.closest_node(light_positions, np.array(
+                (car_position.position.x, car_position.position.y)))
+
+            rospy.logwarn('{}'.format(abs(self.lights[closest].pose.pose.position.x - car_position.position.x) +
+                    abs(self.lights[closest].pose.pose.position.y - car_position.position.y)))
+            if 10 < (abs(self.lights[closest].pose.pose.position.x - car_position.position.x) +
+                    abs(self.lights[closest].pose.pose.position.y - car_position.position.y)) < 80:
+
+                light_wp = self.get_closest_waypoint(self.lights[closest].pose.pose, self.waypoints)
+
+                if self.waypoints and len(self.waypoints) > closest:
+                    light_wp = self.waypoints[closest]
+                    light = self.lights[closest]
 
         #TODO find the closest visible traffic light (if one exists)
 

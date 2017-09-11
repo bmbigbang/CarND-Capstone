@@ -1,5 +1,6 @@
 from styx_msgs.msg import TrafficLight
-from matplotlib import pyplot
+import cv2
+
 
 class TLClassifier(object):
     def __init__(self):
@@ -19,8 +20,6 @@ class TLClassifier(object):
         """
         #TODO implement light color prediction
         self.c += 1
-        pyplot.savefig('/home/student/classifier_images/image-{}'.format(self.c), dpi=None, facecolor='w', edgecolor='w',
-                orientation='landscape', papertype=None, format=None,
-                transparent=False, bbox_inches=None, pad_inches=0.1,
-                frameon=None)
+        # backtorgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        cv2.imwrite('/home/student/classifier_images/image-{}.jpg'.format(self.c), image)
         return TrafficLight.GREEN
