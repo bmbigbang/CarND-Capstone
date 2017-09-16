@@ -1,12 +1,13 @@
 from styx_msgs.msg import TrafficLight
 import cv2
+import rospy
 
 
 class TLClassifier(object):
-    def __init__(self):
+    def __init__(self, model):
         #TODO load classifier
         self.c = 0
-        pass
+        self.model = model
 
     def get_classification(self, image):
         """Determines the color of the traffic light in the image
@@ -20,6 +21,12 @@ class TLClassifier(object):
         """
         #TODO implement light color prediction
         self.c += 1
-        # backtorgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        cv2.imwrite('/home/student/classifier_images/image-{}.jpg'.format(self.c), image)
-        return TrafficLight.GREEN
+
+
+        # This model currently assumes that the features of the model are just the images.
+        a = self.model.predict(image, batch_size=12)
+        rospy.logwarn(a)
+        if a > 0.9:
+            return TrafficLight.GREEN
+        else:
+            return TrafficLight.RED
