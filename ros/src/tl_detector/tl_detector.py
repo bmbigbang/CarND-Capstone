@@ -12,7 +12,6 @@ import cv2
 import yaml
 import tl_helper
 import numpy as np
-from keras.models import model_from_json
 
 STATE_COUNT_THRESHOLD = 3
 LOOKAHEAD_WPS = 20
@@ -44,18 +43,8 @@ class TLDetector(object):
 
         self.upcoming_red_light_pub = rospy.Publisher('/traffic_waypoint', Int32, queue_size=1)
 
-        with open('model.json', 'r') as jfile:
-            # NOTE: if you saved the file by calling json.dump(model.to_json(), ...)
-            # then you will have to call:
-            #
-            #   model = model_from_json(json.loads(jfile.read()))\
-            #
-            # instead.
-            model_saved = model_from_json(jfile.read())
-
-        model_saved.load_weights('model.h5', by_name=True)
         self.bridge = CvBridge()
-        self.light_classifier = TLClassifier(model_saved)
+        self.light_classifier = TLClassifier()
         self.listener = tf.TransformListener()
 
         self.state = TrafficLight.UNKNOWN
@@ -189,9 +178,6 @@ class TLDetector(object):
         cv_image = self.bridge.imgmsg_to_cv2(self.camera_image, "bgr8")
 
         img = cv2.resize(cv_image, (160, 80))
-        # images are converted from RBG instead of BGR
-        hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS)
-        cv_image = (np.array(hls).astype(np.float32) / 255.0) + 0.01
         transformed_image_array = cv_image[None, :, :, :]
 
         x, y = self.project_to_image_plane(light.pose.pose.position)
@@ -214,7 +200,7 @@ class TLDetector(object):
         """
         light = None
         light_positions = self.config['light_positions']
-        if self.pose:
+        if self.pose and self.waypoints:
             car_position = self.pose.pose
             closest = tl_helper.closest_node(light_positions, np.array(
                 (car_position.position.x, car_position.position.y)))
